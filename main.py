@@ -1,4 +1,11 @@
+import os
+import sys
 import asyncio
+
+# --- FFMPEG YOLU TANIMLAMA (Hata Almamak İçin) ---
+os.environ["PATH"] += os.pathsep + "/usr/bin"
+os.environ["PATH"] += os.pathsep + "/usr/local/bin"
+
 from pyrogram import filters, idle
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from pytgcalls.types import AudioPiped, VideoPiped
@@ -48,17 +55,25 @@ async def play_h(_, m):
     
     proc = await m.reply("🔍 **Akış aranıyor..**")
     
-    ydl_opts = {"format": "bestaudio" if m.command[0]=="oynat" else "best", "quiet": True, "outtmpl": "downloads/%(id)s.%(ext)s"}
-    with YoutubeDL(ydl_opts) as ytdl:
-        info = ytdl.extract_info(f"ytsearch:{query}", download=True)["entries"][0]
-        file = ytdl.prepare_filename(info)
-
+    ydl_opts = {
+        "format": "bestaudio" if m.command[0]=="oynat" else "best",
+        "quiet": True, 
+        "outtmpl": "downloads/%(id)s.%(ext)s",
+        "noplaylist": True
+    }
+    
     try:
+        with YoutubeDL(ydl_opts) as ytdl:
+            info = ytdl.extract_info(f"ytsearch:{query}", download=True)["entries"][0]
+            file = ytdl.prepare_filename(info)
+
         stream_type = AudioPiped(file) if m.command[0]=="oynat" else VideoPiped(file)
+        
         await pytgcalls.join_group_call(m.chat.id, stream_type)
         await m.reply_photo(photo=THUMB_IMG, caption=f"✅ **Yayında:** {info['title']}\n👤 **İsteyen:** {m.from_user.mention}")
     except Exception as e:
         await m.reply(f"❌ **Hata:** {e}")
+    
     await proc.delete()
 
 # --- YETKİLİ KOMUTLARI ---
@@ -68,27 +83,60 @@ async def auth_cmds_h(_, m):
         return await m.reply("❌ Yetkin yok kanka.")
     
     cmd = m.command[0]
-    if cmd == "son":
-        await pytgcalls.leave_group_call(m.chat.id)
-        await m.reply_photo(photo=THUMB_IMG, caption=f"📡 **Yayın Bitti**\n👤 **Yapan:** {m.from_user.mention}")
-    elif cmd == "durdur": await pytgcalls.pause_stream(m.chat.id); await m.reply("⏸ Durduruldu.")
-    elif cmd == "devam": await pytgcalls.resume_stream(m.chat.id); await m.reply("▶ Devam ediyor.")
+    try:
+        if cmd == "son":
+            await pytgcalls.leave_group_call(m.chat.id)
+            await m.reply_photo(photo=THUMB_IMG, caption=f"📡 **Yayın Bitti**\n👤 **Yapan:** {m.from_user.mention}")
+        elif cmd == "durdur": 
+            await pytgcalls.pause_stream(m.chat.id)
+            await m.reply("⏸ Durduruldu.")
+        elif cmd == "devam": 
+            await pytgcalls.resume_stream(m.chat.id)
+            await m.reply("▶ Devam ediyor.")
+        elif cmd == "atla":
+            await m.reply("⏭ Şarkı atlandı (Sıradaki sisteme eklendiğinde aktif olacak).")
+    except Exception as e:
+        await m.reply(f"❌ **İşlem Hatası:** {e}")
 
 # --- OWNER VE AUTH KOMUTLARI ---
 @app.on_message(filters.command("mban") & filters.user(OWNER_ID))
 async def ban_h(_, m):
-    uid = int(m.command[1]); BANNED_USERS.append(uid); await m.reply(f"🚫 {uid} banlandı.")
+    try:
+        uid = int(m.command[1])
+        BANNED_USERS.append(uid)
+        await m.reply(f"🚫 {uid} bot kullanımından banlandı.")
+    except: await m.reply("ID yaz kanka.")
+
+@app.on_message(filters.command("munban") & filters.user(OWNER_ID))
+async def unban_h(_, m):
+    try:
+        uid = int(m.command[1])
+        if uid in BANNED_USERS: BANNED_USERS.remove(uid)
+        await m.reply(f"✅ {uid} banı kaldırıldı.")
+    except: await m.reply("ID yaz kanka.")
 
 @app.on_message(filters.command("auth") & filters.group)
 async def auth_add_h(_, m):
     check = await app.get_chat_member(m.chat.id, m.from_user.id)
-    if not (check.privileges.can_promote_members or m.from_user.id in SUDO_USERS): return
+    if not (check.privileges.can_promote_members or m.from_user.id in SUDO_USERS):
+        return await m.reply("❌ Sadece admin ekleyebilenler /auth verebilir.")
+    
     target = m.reply_to_message.from_user.id if m.reply_to_message else int(m.command[1])
     if m.chat.id not in AUTH_USERS: AUTH_USERS[m.chat.id] = []
-    AUTH_USERS[m.chat.id].append(target); await m.reply(f"✅ {target} yetkilendirildi.")
+    AUTH_USERS[m.chat.id].append(target)
+    await m.reply(f"✅ ID: {target} bu grup için yetkilendirildi.")
+
+@app.on_message(filters.command("authall") & filters.group)
+async def auth_list_h(_, m):
+    text = f"📋 **{m.chat.title} Yetkilileri:**\n"
+    users = AUTH_USERS.get(m.chat.id, [])
+    if not users: text += "Henüz yetkili yok."
+    for i, u in enumerate(users, 1): text += f"{i}. `{u}`\n"
+    await m.reply(text)
 
 # --- BAŞLATMA ---
 async def start_jaze():
+    print("⏳ Jaze Music Başlatılıyor...")
     await app.start()
     await asistan.start()
     await pytgcalls.start()
@@ -96,5 +144,5 @@ async def start_jaze():
     await idle()
 
 if __name__ == "__main__":
-    asyncio.get_event_loop().run_until_complete(start_jaze())
-        
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(start_jaze())
