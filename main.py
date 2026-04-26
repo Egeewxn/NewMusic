@@ -2,21 +2,25 @@ import sys
 import os
 import asyncio
 
-# --- KÜTÜPHANE VE SİSTEM YOLLARI ---
+# --- SİSTEM YOLLARINI ZORLA TANIMLAMA ---
 sys.path.append("/usr/local/lib/python3.8/dist-packages")
 os.environ["PATH"] += os.pathsep + "/usr/bin"
 os.environ["PATH"] += os.pathsep + "/usr/local/bin"
 
 from pyrogram import filters, idle
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-# Yeni sürümde (v2) import bu şekilde olmalı:
-from pytgcalls import PyTgCalls
+
+# DİKKAT: Küçük harf kullanımı (v2 sürümü için en garantisi)
+import pytgcalls
 from pytgcalls.types import AudioPiped, VideoPiped
 from yt_dlp import YoutubeDL
 
 # Config ve uygulama dosyalarından çekilenler
 from config import *
-from callsmusic.callsmusic import app, asistan, pytgcalls
+from callsmusic.callsmusic import app, asistan
+
+# pytgcalls nesnesini doğru şekilde tanımlayalım
+call_py = pytgcalls.PyTgCalls(app)
 
 # --- START MENÜSÜ ---
 START_BTN = InlineKeyboardMarkup([
@@ -36,7 +40,7 @@ async def cb_h(_, q: CallbackQuery):
                [InlineKeyboardButton("🔙 Geri", callback_data="s_back")]]
         await q.message.edit_caption("📚 **Komut Listesi**", reply_markup=InlineKeyboardMarkup(btn))
     elif q.data == "u_cmds":
-        await q.message.edit_caption("🎵 **Komutlar:**\n\n/oynat - Şarkı çalar\n/voynat - Video çalar\n/atla - Yayını kapatır\n/durdur - Müziği durdurur\n/devam - Müziği devam ettirir\n/son - Yayını bitirir", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Geri", callback_data="menu_ana")]]))
+        await q.message.edit_caption("🎵 **Komutlar:**\n\n/oynat - Şarkı\n/voynat - Video\n/atla - Kapatır\n/durdur - Durdurur\n/devam - Devam\n/son - Bitirir", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Geri", callback_data="menu_ana")]]))
     elif q.data == "s_back":
         await q.message.edit_caption("▶ **Ben Jaze Music! Sesli sohbetlerde müzik çalabilirim.**", reply_markup=START_BTN)
 
@@ -49,42 +53,35 @@ async def play_h(_, m):
     
     proc = await m.reply("🔍 **Akış aranıyor..**")
     
-    ydl_opts = {
-        "format": "bestaudio" if m.command[0]=="oynat" else "best",
-        "quiet": True, 
-        "outtmpl": "downloads/%(id)s.%(ext)s",
-        "noplaylist": True
-    }
+    ydl_opts = {"format": "bestaudio" if m.command[0]=="oynat" else "best", "quiet": True, "noplaylist": True}
     
     try:
         with YoutubeDL(ydl_opts) as ytdl:
-            info = ytdl.extract_info(f"ytsearch:{query}", download=True)["entries"][0]
-            file = ytdl.prepare_filename(info)
+            info = ytdl.extract_info(f"ytsearch:{query}", download=False)["entries"][0]
+            url = info['url']
 
-        stream_type = AudioPiped(file) if m.command[0]=="oynat" else VideoPiped(file)
+        stream_type = AudioPiped(url) if m.command[0]=="oynat" else VideoPiped(url)
         
-        await pytgcalls.join_group_call(m.chat.id, stream_type)
-        await m.reply_photo(photo=THUMB_IMG, caption=f"✅ **Yayında:** {info['title']}\n👤 **İsteyen:** {m.from_user.mention}")
+        await call_py.join_group_call(m.chat.id, stream_type)
+        await m.reply_photo(photo=THUMB_IMG, caption=f"✅ **Yayında:** {info['title']}")
     except Exception as e:
         await m.reply(f"❌ **Hata:** {e}")
     
     await proc.delete()
 
-# --- MÜZİK KONTROL KOMUTLARI (AUTH KALDIRILDI) ---
+# --- MÜZİK KONTROLLERİ ---
 @app.on_message(filters.command(["atla", "son", "durdur", "devam"]) & filters.group)
 async def music_logic_h(_, m):
-    if m.from_user.id in BANNED_USERS: return
-    
     cmd = m.command[0]
     try:
-        if cmd == "son" or cmd == "atla":
-            await pytgcalls.leave_group_call(m.chat.id)
+        if cmd in ["son", "atla"]:
+            await call_py.leave_group_call(m.chat.id)
             await m.reply("📡 **Yayın bitti.**")
         elif cmd == "durdur": 
-            await pytgcalls.pause_stream(m.chat.id)
+            await call_py.pause_stream(m.chat.id)
             await m.reply("⏸ **Durduruldu.**")
         elif cmd == "devam": 
-            await pytgcalls.resume_stream(m.chat.id)
+            await call_py.resume_stream(m.chat.id)
             await m.reply("▶ **Devam ediyor.**")
     except Exception as e:
         await m.reply(f"❌ **İşlem Hatası:** {e}")
@@ -94,7 +91,7 @@ async def start_jaze():
     print("⏳ Jaze Music Başlatılıyor...")
     await app.start()
     await asistan.start()
-    await pytgcalls.start()
+    await call_py.start()
     print("🚀 Jaze Music v2 Online!")
     await idle()
 
