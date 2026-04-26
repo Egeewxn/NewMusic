@@ -2,20 +2,23 @@ import sys
 import os
 import asyncio
 
-# --- SİSTEM YOLLARINI ZORLA TANIMLAMA ---
+# --- KÜTÜPHANE VE SİSTEM YOLLARI ---
 sys.path.append("/usr/local/lib/python3.8/dist-packages")
 os.environ["PATH"] += os.pathsep + "/usr/bin"
 os.environ["PATH"] += os.pathsep + "/usr/local/bin"
 
 from pyrogram import filters, idle
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+# Yeni sürümde (v2) import bu şekilde olmalı:
 from pytgcalls import PyTgCalls
 from pytgcalls.types import AudioPiped, VideoPiped
 from yt_dlp import YoutubeDL
+
+# Config ve uygulama dosyalarından çekilenler
 from config import *
 from callsmusic.callsmusic import app, asistan, pytgcalls
 
-# --- MENÜLER ---
+# --- START MENÜSÜ ---
 START_BTN = InlineKeyboardMarkup([
     [InlineKeyboardButton("👤 Sahibim", url="https://t.me/yikmaz"),
      InlineKeyboardButton("🆘 Destek", url="https://t.me/l7xsohbet")],
@@ -33,7 +36,7 @@ async def cb_h(_, q: CallbackQuery):
                [InlineKeyboardButton("🔙 Geri", callback_data="s_back")]]
         await q.message.edit_caption("📚 **Komut Listesi**", reply_markup=InlineKeyboardMarkup(btn))
     elif q.data == "u_cmds":
-        await q.message.edit_caption("🎵 **Komutlar:**\n\n/oynat - Şarkı çalar\n/voynat - Video çalar\n/atla - Sıradakine geçer\n/durdur - Müziği durdurur\n/devam - Müziği devam ettirir\n/son - Yayını bitirir", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Geri", callback_data="menu_ana")]]))
+        await q.message.edit_caption("🎵 **Komutlar:**\n\n/oynat - Şarkı çalar\n/voynat - Video çalar\n/atla - Yayını kapatır\n/durdur - Müziği durdurur\n/devam - Müziği devam ettirir\n/son - Yayını bitirir", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Geri", callback_data="menu_ana")]]))
     elif q.data == "s_back":
         await q.message.edit_caption("▶ **Ben Jaze Music! Sesli sohbetlerde müzik çalabilirim.**", reply_markup=START_BTN)
 
@@ -67,37 +70,32 @@ async def play_h(_, m):
     
     await proc.delete()
 
-# --- TEMEL MÜZİK KONTROL KOMUTLARI ---
+# --- MÜZİK KONTROL KOMUTLARI (AUTH KALDIRILDI) ---
 @app.on_message(filters.command(["atla", "son", "durdur", "devam"]) & filters.group)
 async def music_logic_h(_, m):
-    # Banlı değilse herkes kullanabilir (veya istersen SUDO_USERS kontrolü ekleyebilirsin)
     if m.from_user.id in BANNED_USERS: return
     
     cmd = m.command[0]
     try:
-        if cmd == "son":
+        if cmd == "son" or cmd == "atla":
             await pytgcalls.leave_group_call(m.chat.id)
-            await m.reply("📡 **Yayın sonlandırıldı.**")
+            await m.reply("📡 **Yayın bitti.**")
         elif cmd == "durdur": 
             await pytgcalls.pause_stream(m.chat.id)
-            await m.reply("⏸ **Yayın duraklatıldı.**")
+            await m.reply("⏸ **Durduruldu.**")
         elif cmd == "devam": 
             await pytgcalls.resume_stream(m.chat.id)
-            await m.reply("▶ **Yayın devam ediyor.**")
-        elif cmd == "atla":
-            # Şimdilik yayını sonlandırıp mesaj atar, sıra sistemi kurulduğunda otomatik geçer.
-            await pytgcalls.leave_group_call(m.chat.id)
-            await m.reply("⏭ **Şarkı atlandı.**")
+            await m.reply("▶ **Devam ediyor.**")
     except Exception as e:
-        await m.reply(f"❌ **İşlem yapılamadı:** {e}")
+        await m.reply(f"❌ **İşlem Hatası:** {e}")
 
 # --- BAŞLATMA ---
 async def start_jaze():
-    print("⏳ Jaze Music Başlatılıyor (Auth Sistemi Kaldırıldı)...")
+    print("⏳ Jaze Music Başlatılıyor...")
     await app.start()
     await asistan.start()
     await pytgcalls.start()
-    print("🚀 Jaze Music v2 Online! (Sadece Müzik)")
+    print("🚀 Jaze Music v2 Online!")
     await idle()
 
 if __name__ == "__main__":
