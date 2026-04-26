@@ -1,11 +1,12 @@
+# GitHub'daki main.py dosyanın başı tam olarak böyle olmalı:
 import sys
 import os
 import asyncio
 from pyrogram import filters, idle
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from pytgcalls import PyTgCalls
-from pytgcalls import media
+from pytgcalls import media  # types yerine media kullanıyoruz
 from yt_dlp import YoutubeDL
+# ... (kodun geri kalanı)
 
 # Proje dosyaların
 from config import *
