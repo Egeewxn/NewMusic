@@ -1,0 +1,14 @@
+import os
+
+API_ID = 31014520
+API_HASH = "a417b28a4d84361257f9672803c94106"
+BOT_TOKEN = "8749491505:AAFsPvNEIWVPwOyYnT5e1f5m_nagejHLqj8"
+STRING_SESSION = "BURAYA_ASISTAN_SESSION_YAZ" 
+
+OWNER_ID = 8234857464
+THUMB_IMG = "https://i.hizliresim.com/j1qk53i.jpg"
+
+# Yetki Listeleri (Bot çalışırken hafızada tutulur)
+SUDO_USERS = [8234857464]
+BANNED_USERS = []
+AUTH_USERS = {} 
