@@ -118,8 +118,9 @@ async def auth_list_h(_, m):
 
 # --- BAŞLATMA ---
 async def start_jaze():
-    await app.start(); await asistan.start(); print("🚀 Jaze Music Online!"); await idle()
-
-if __name__ == "__main__":
-    asyncio.get_event_loop().run_until_complete(start_jaze())
-  
+    await app.start()
+    await asistan.start()
+    await pytgcalls.start() # Ses motorunu başlat
+    print("🚀 Jaze Music v2 Online!")
+    await idle()
+    
