@@ -1,0 +1,4 @@
+pyrogram
+pytgcalls==1.0.0
+tgcalls
+yt-dlp
