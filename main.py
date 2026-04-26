@@ -2,7 +2,7 @@ import sys
 import os
 import asyncio
 
-# --- SİSTEM YOLLARINI ZORLA TANIMLAMA ---
+# Kütüphane yollarını garantiye alalım
 sys.path.append("/usr/local/lib/python3.8/dist-packages")
 os.environ["PATH"] += os.pathsep + "/usr/bin"
 os.environ["PATH"] += os.pathsep + "/usr/local/bin"
@@ -10,17 +10,17 @@ os.environ["PATH"] += os.pathsep + "/usr/local/bin"
 from pyrogram import filters, idle
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
-# DİKKAT: Küçük harf kullanımı (v2 sürümü için en garantisi)
-import pytgcalls
-from pytgcalls.types import AudioPiped, VideoPiped
+# YENİ SÜRÜM (v3 dev) IMPORT YAPISI:
+from pytgcalls import PyTgCalls
+from pytgcalls import media  # AudioPiped ve VideoPiped artık buradan geliyor
 from yt_dlp import YoutubeDL
 
 # Config ve uygulama dosyalarından çekilenler
 from config import *
 from callsmusic.callsmusic import app, asistan
 
-# pytgcalls nesnesini doğru şekilde tanımlayalım
-call_py = pytgcalls.PyTgCalls(app)
+# pytgcalls nesnesini yeni sürüme göre tanımlayalım
+call_py = PyTgCalls(app)
 
 # --- START MENÜSÜ ---
 START_BTN = InlineKeyboardMarkup([
@@ -60,7 +60,8 @@ async def play_h(_, m):
             info = ytdl.extract_info(f"ytsearch:{query}", download=False)["entries"][0]
             url = info['url']
 
-        stream_type = AudioPiped(url) if m.command[0]=="oynat" else VideoPiped(url)
+        # Yeni sürümde media.AudioPiped şeklinde kullanılır
+        stream_type = media.AudioPiped(url) if m.command[0]=="oynat" else media.VideoPiped(url)
         
         await call_py.join_group_call(m.chat.id, stream_type)
         await m.reply_photo(photo=THUMB_IMG, caption=f"✅ **Yayında:** {info['title']}")
@@ -88,7 +89,7 @@ async def music_logic_h(_, m):
 
 # --- BAŞLATMA ---
 async def start_jaze():
-    print("⏳ Jaze Music Başlatılıyor...")
+    print("⏳ Jaze Music Başlatılıyor (v3 dev)...")
     await app.start()
     await asistan.start()
     await call_py.start()
